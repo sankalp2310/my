@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>For You ❤️</title>
-  <meta name="description" content="A love note with hearts, fireworks, and floating compliments." />
+  <meta name="description" content="An envelope love note with hidden text, heart seal, fireworks, and music with fade." />
   <style>
     :root{
       --bg1:#ffd6e7;
@@ -34,7 +34,6 @@
       color: var(--text);
       overflow:hidden;
 
-      /* Pink gradient with soft dotted sprinkle */
       background:
         radial-gradient(var(--dot) 1.2px, transparent 1.3px) 0 0 / 44px 44px,
         radial-gradient(var(--dot) 1px, transparent 1px) 22px 22px / 44px 44px,
@@ -50,30 +49,148 @@
       pointer-events: none;
     }
 
-    /* Glass-like main card */
-    .card{
+    /* ---------- Envelope Card ---------- */
+    .envelope{
       position:relative;
-      z-index:4; /* above background hearts */
-      width:min(92vw, 720px);
-      padding: 28px 28px 32px;
-      border-radius: 24px;
+      z-index:4;
+      width:min(92vw, 700px);
+      height: 380px;
+      perspective: 1200px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .envelope-inner{
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
       background: linear-gradient(180deg, var(--glass-bg1), var(--glass-bg2));
       border: 1px solid var(--glass-border);
       backdrop-filter: blur(12px) saturate(125%);
       -webkit-backdrop-filter: blur(12px) saturate(125%);
-      box-shadow:
-        0 14px 48px var(--shadow),
-        inset 0 1px 0 #ffffff80;
-      overflow: hidden; /* clip card fireworks inside the rounded card */
+      box-shadow: 0 14px 48px var(--shadow), inset 0 1px 0 #ffffff80;
+      overflow: hidden; /* clip fireworks within envelope */
+      cursor: pointer;  /* tap anywhere on card to open/close */
     }
 
-    /* Card-local canvas (confined to the card) */
-    .card canvas#cardFx{
+    .envelope-inner::after{
+      content:"";
       position:absolute;
-      inset:0;
-      z-index:5;           /* above content so it glows; change to 1 to put behind */
-      pointer-events:none; /* keep button clickable */
-      border-radius: inherit;
+      bottom:-1px;
+      left:50%;
+      transform: translateX(-50%);
+      width:0; height:0;
+      border-left: calc(50% - 2px) solid transparent;
+      border-right: calc(50% - 2px) solid transparent;
+      border-top: 90px solid #ffffff26;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.06));
+      pointer-events: none;
+    }
+
+    /* Top flap */
+    .flap{
+      position:absolute;
+      top:0; left:0; right:0;
+      height: 58%;
+      transform-origin: top center;
+      background: linear-gradient(180deg, #ffffff55, #ffffff1c);
+      border-bottom: 1px solid #ffffff66;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      clip-path: polygon(0 0, 100% 0, 50% 100%);
+      transition: transform .6s cubic-bezier(.2,.8,.2,1), opacity .3s ease;
+      z-index: 6;
+      pointer-events: none; /* clicks go to .envelope-inner */
+    }
+    .envelope.open .flap{
+      transform: rotateX(160deg);
+      opacity: 0.85;
+    }
+
+    /* Heart seal */
+    .seal{
+      position: absolute;
+      top: 26%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 7;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width: 76px; height: 76px;
+      border-radius: 50%;
+      border: 0;
+      cursor: pointer;
+      background: radial-gradient(circle at 30% 30%, #ff87bd, #ff5fa2 60%, #f3429d 100%);
+      box-shadow: 0 10px 28px var(--button-glow);
+      color: #fff;
+      font-size: 34px;
+      line-height: 1;
+      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease, top .2s ease;
+      user-select: none;
+      touch-action: manipulation;
+      animation: seal-pulse 2.4s ease-in-out infinite;
+      pointer-events: auto; /* clickable */
+    }
+    @keyframes seal-pulse{
+      0%,100%{ transform: translate(-50%, -50%) scale(1); }
+      50%{ transform: translate(-50%, -50%) scale(1.05); }
+    }
+    .seal:hover{ box-shadow: 0 14px 36px rgba(243, 66, 157, 0.58); }
+    .seal:active{ transform: translate(-50%, -50%) scale(0.96); }
+
+    /* "tap" hint below the seal */
+    .seal::after{
+      content: "tap";
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #fff;
+      opacity: 0.9;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+      pointer-events: none;
+    }
+
+    /* After opening: keep the seal visible, smaller, moved up so it doesn't overlap text */
+    .envelope.open .seal{
+      top: 12%;
+      transform: translate(-50%, -50%) scale(0.72);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .envelope.open .seal::after{
+      opacity: 0.8;
+      content: "tap";
+    }
+
+    /* Letter (hidden when closed) */
+    .letter{
+      position: relative;
+      z-index: 5; /* below seal */
+      width: 100%;
+      height: 100%;
+      display:flex;
+      flex-direction: column;
+      align-items:center;
+      justify-content:center;
+      padding: 28px;
+      text-align:center;
+
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .35s ease, transform .45s ease, padding-top .25s ease;
+      pointer-events: none; /* clicks pass through to open the card */
+    }
+    .envelope.open .letter{
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      padding-top: 80px; /* give space since the seal stays visible above */
     }
 
     h1{
@@ -99,43 +216,9 @@
       opacity: 0.9;
     }
 
-    .actions{
-      margin-top: 18px;
-      display:flex;
-      gap: 12px;
-      justify-content:center;
-      flex-wrap: wrap;
-    }
+    @keyframes fade{ from{opacity:.78} to{opacity:1} }
 
-    /* Main heart button on the card */
-    .btn-heart{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width: clamp(56px, 16vw, 76px);
-      height: clamp(56px, 16vw, 76px);
-      border-radius: 50%;
-      border: 0;
-      cursor: pointer;
-      background: radial-gradient(circle at 30% 30%, #ff87bd, #ff5fa2 60%, #f3429d 100%);
-      box-shadow: 0 10px 28px var(--button-glow);
-      color: #fff;
-      font-size: clamp(24px, 7vw, 34px);
-      line-height: 1;
-      transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
-      user-select: none;
-      touch-action: manipulation;
-    }
-    .btn-heart:hover{ transform: translateY(-2px); box-shadow: 0 14px 36px rgba(243, 66, 157, 0.58); }
-    .btn-heart:active{ transform: translateY(0) scale(0.98); box-shadow: 0 8px 20px rgba(243, 66, 157, 0.45); }
-    .btn-heart:focus-visible{ outline: 2px solid #fff; outline-offset: 3px; }
-
-    @keyframes fade{
-      from{opacity:.78}
-      to{opacity:1}
-    }
-
-    /* Floating layer for emojis + phrases (non-interactive) */
+    /* Floating emojis + phrases (non-interactive) */
     .float-layer{
       position: fixed;
       inset: 0;
@@ -159,12 +242,12 @@
         0 0 10px rgba(255,255,255,0.35);
     }
 
-    /* Interactive background hearts (clickable) */
+    /* Interactive background hearts */
     .bg-hearts{
       position: fixed;
       inset: 0;
       z-index: 2;
-      pointer-events: none; /* children will enable */
+      pointer-events: none; /* children enable */
     }
     .bg-heart{
       position: absolute;
@@ -181,19 +264,13 @@
       user-select:none;
       touch-action: manipulation;
       transition: transform .15s ease, box-shadow .2s ease;
-      animation: bob 3.2s ease-in-out infinite;
+      animation: bob var(--bobDur, 3.2s) ease-in-out infinite var(--bobDelay, 0s);
       font-size: 22px;
       line-height: 1;
-
-      /* Per-heart randomized CSS variables set by JS */
-      --bobAmp: 10px;
-      --bobDelay: 0s;
-      --bobDur: 3.2s;
+      --bobAmp: 16px;
     }
-    .bg-heart{ animation-duration: var(--bobDur); animation-delay: var(--bobDelay); }
     .bg-heart:hover{ transform: translateY(-2px) scale(1.05); }
     .bg-heart:active{ transform: translateY(0) scale(0.98); }
-
     @keyframes bob{
       0%,100%{ transform: translateY(0); }
       50%{ transform: translateY(calc(-1 * var(--bobAmp))); }
@@ -202,7 +279,16 @@
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce){
       * { animation: none !important; transition: none !important; }
-      .btn-heart, .bg-heart { transition: none; }
+      .seal, .bg-heart { transition: none; }
+    }
+
+    /* Card-local canvas (confined to the envelope, behind text) */
+    #cardFx{
+      position:absolute;
+      inset:0;
+      z-index: 2;          /* behind the letter so text stays readable */
+      pointer-events:none;
+      border-radius: inherit;
     }
   </style>
 </head>
@@ -216,19 +302,23 @@
   <!-- Random clickable background heart buttons -->
   <div class="bg-hearts" aria-hidden="false"></div>
 
-  <!-- Main glass card -->
-  <main class="card" role="main" aria-live="polite">
-    <!-- Card-local fireworks canvas (confined to this card) -->
-    <canvas id="cardFx" aria-hidden="true"></canvas>
+  <!-- Envelope -->
+  <section class="envelope" role="main" aria-live="polite">
+    <div class="envelope-inner" id="envelopeCard">
+      <div class="flap"></div>
+      <button class="seal" id="sealBtn" aria-label="Open or close envelope">💗</button>
+      <canvas id="cardFx" aria-hidden="true"></canvas>
 
-    <h1>🥺 I Miss You 💕</h1>
-    <p>Meeraaaaaa 💖</p>
-    <div class="sparkles">💫 💫 💫 💫 💫 💫 💫</div>
-
-    <div class="actions">
-      <button class="btn-heart" id="mainHeart" aria-label="Send love">💗</button>
+      <div class="letter" id="letter">
+        <h1>🥺 I Miss You 💕</h1>
+        <p>Meeraaaaaa 💖</p>
+        <div class="sparkles">💫 💫 💫 💫 💫 💫 💫</div>
+      </div>
     </div>
-  </main>
+  </section>
+
+  <!-- Your song: plays when opening, fades out when closing -->
+  <audio id="bgm" src="Janiye(KoshalWorld.Com).mp3" preload="auto" playsinline></audio>
 
   <script>
   (function(){
@@ -297,7 +387,7 @@
        BACKGROUND HEART BUTTONS
        ========================= */
     const bgHearts = document.querySelector('.bg-hearts');
-    const HEART_COUNT = prefersReduced ? 6 : 12; // number of random hearts
+    const HEART_COUNT = prefersReduced ? 6 : 12;
 
     function placeBackgroundHearts(){
       bgHearts.innerHTML = '';
@@ -305,56 +395,49 @@
       for(let i=0;i<HEART_COUNT;i++){
         const btn = document.createElement('button');
         btn.className = 'bg-heart';
-        const size = Math.round(44 + Math.random()*24); // px
+        const size = Math.round(44 + Math.random()*24);
         btn.style.width = btn.style.height = size + 'px';
         btn.style.fontSize = Math.round(size*0.45) + 'px';
         btn.setAttribute('aria-label', 'Send love');
         btn.textContent = ['💗','💘','💖','💝'][Math.floor(Math.random()*4)];
 
-        // Randomized bobble (more than before)
-        const amp = (10 + Math.random()*14).toFixed(0) + 'px';  // 10–24px
-        const dur = (2.4 + Math.random()*1.8).toFixed(2) + 's'; // 2.4–4.2s
-        const delay = (-Math.random()*2).toFixed(2) + 's';      // stagger
+        // lively bobble
+        const amp = (12 + Math.random()*18).toFixed(0) + 'px';
+        const dur = (2.4 + Math.random()*1.8).toFixed(2) + 's';
+        const delay = (-Math.random()*2).toFixed(2) + 's';
         btn.style.setProperty('--bobAmp', amp);
         btn.style.setProperty('--bobDur', dur);
         btn.style.setProperty('--bobDelay', delay);
 
-        // safe random position (avoid center where card is)
+        // avoid envelope center
         let x = Math.random() * vw;
         let y = Math.random() * vh;
-        const cardSafeW = Math.min(720, vw*0.92);
-        const cardSafeH = 260; // approx card height
+        const envW = Math.min(700, vw*0.92);
+        const envH = 380;
         const cx = vw/2, cy = vh/2;
-        const rx = cardSafeW/2 + 60, ry = cardSafeH/2 + 60;
+        const rx = envW/2 + 60, ry = envH/2 + 60;
         let tries = 0;
         while(Math.abs(x - cx) < rx && Math.abs(y - cy) < ry && tries < 20){
-          x = Math.random() * vw;
-          y = Math.random() * vh;
-          tries++;
+          x = Math.random() * vw; y = Math.random() * vh; tries++;
         }
-
         btn.style.left = (x - size/2) + 'px';
         btn.style.top  = (y - size/2) + 'px';
 
-        // Background hearts -> background fireworks (edge-aware)
         btn.addEventListener('click', ()=>{
           const r = btn.getBoundingClientRect();
           let bx = r.left + r.width/2;
           let by = r.top + r.height/2;
-
-          // Clamp start location slightly inward so bursts stay visible
-          const margin = 70;
-          bx = Math.max(margin, Math.min(innerWidth - margin, bx));
+          // Stronger inward clamp to keep bursts visible
+          const margin = 120;
+          bx = Math.max(margin, Math.min(innerWidth  - margin, bx));
           by = Math.max(margin, Math.min(innerHeight - margin, by));
-
-          fireworksShow(globalR, bx, by, 1.2, /*edgeAware*/ true);
+          fireworksShow(globalR, bx, by, 2.1, /*edgeAware*/ true);
           pulse(btn);
         });
 
         bgHearts.appendChild(btn);
       }
     }
-
     function pulse(el){
       el.animate([
         { transform: 'scale(1)' },
@@ -362,13 +445,11 @@
         { transform: 'scale(1)' }
       ], { duration: 300, easing: 'ease-out' });
     }
-
     placeBackgroundHearts();
     addEventListener('resize', placeBackgroundHearts);
 
     /* =========================
        FIREWORKS / CONFETTI ENGINE
-       (multi-canvas renderers)
        ========================= */
     const colors = [
       '#ff5fa2','#ffd166','#06d6a0','#118ab2','#ef476f','#ffffff',
@@ -381,11 +462,12 @@
         canvas, ctx,
         particles: [],
         flashes: [],
-        MAX_PARTICLES: prefersReduced ? 900 : 1600,
+        MAX_PARTICLES: prefersReduced ? 900 : 1800,
         dpr: Math.min(2, window.devicePixelRatio || 1),
         cssW: 0, cssH: 0
       };
       resizeRenderer(r);
+      stepRenderer(r); // start loop immediately
       return r;
     }
 
@@ -401,21 +483,16 @@
       r.cssH = Math.max(1, Math.floor(h));
       r.canvas.width = Math.max(1, Math.floor(w * r.dpr));
       r.canvas.height = Math.max(1, Math.floor(h * r.dpr));
-      r.ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0); // draw using CSS pixels
-      // Clear once after resize
+      r.ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
       r.ctx.clearRect(0, 0, r.cssW, r.cssH);
     }
 
-    // Global/background renderer
+    // Global renderer (background) and card-local renderer (inside envelope)
     const globalCanvas = document.getElementById('fx');
     const globalR = createRenderer(globalCanvas);
-
-    // Card-local renderer
-    const cardElem = document.querySelector('.card');
     const cardCanvas = document.getElementById('cardFx');
     const cardR = createRenderer(cardCanvas);
 
-    // Keep canvases in sync on resize
     addEventListener('resize', ()=>{
       resizeRenderer(globalR);
       resizeRenderer(cardR);
@@ -424,61 +501,40 @@
     function rand(min, max){ return Math.random()*(max-min)+min; }
     function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-    function addFlash(r,x,y){
-      r.flashes.push({ x, y, r: 0, alpha: 0.55 });
-    }
+    function addFlash(r,x,y){ r.flashes.push({ x, y, r: 0, alpha: 0.55 }); }
 
-    // Make room for new bursts so clicks are always dense
     function ensureCapacity(r, addCount){
       const overflow = (r.particles.length + addCount) - r.MAX_PARTICLES;
-      if(overflow > 0){
-        r.particles.splice(0, overflow);
-      }
+      if(overflow > 0){ r.particles.splice(0, overflow); }
     }
 
-    // Bias velocities inward if start is near screen edges (for global only)
-    function inwardBiasedVector(r, angle, x, y, biasStrength=0.9){
-      const vx = Math.cos(angle);
-      const vy = Math.sin(angle);
-      const w = r.cssW, h = r.cssH, margin = 120;
-      let bias = 0;
-
-      if(x < margin) bias = Math.max(bias, (margin - x) / margin);
-      if(x > w - margin) bias = Math.max(bias, (x - (w - margin)) / margin);
-      if(y < margin) bias = Math.max(bias, (margin - y) / margin);
-      if(y > h - margin) bias = Math.max(bias, (y - (h - margin)) / margin);
-
-      if(bias <= 0) return {vx, vy};
-
-      // Inward unit vector towards center
-      let dx = (w * 0.5) - x;
-      let dy = (h * 0.5) - y;
-      const len = Math.hypot(dx, dy) || 1;
-      dx /= len; dy /= len;
-
-      // Mix random direction with inward direction
-      const mix = Math.min(1, bias * biasStrength);
-      let mx = vx*(1-mix) + dx*mix;
-      let my = vy*(1-mix) + dy*mix;
-      const mlen = Math.hypot(mx,my) || 1;
-      return { vx: mx/mlen, vy: my/mlen };
+    /* Edge-aware: pick angles in a cone pointing toward screen center when near edges */
+    function biasedAngleToCenter(r, x, y){
+      const cx = r.cssW * 0.5;
+      const cy = r.cssH * 0.5;
+      const targetAngle = Math.atan2(cy - y, cx - x);
+      const margin = 160; // how close to edge we consider "biased"
+      const dx = Math.min(x, r.cssW - x);
+      const dy = Math.min(y, r.cssH - y);
+      const edgeProximity = Math.max(0, 1 - Math.min(dx, dy) / margin); // 0 (safe) -> 1 (edge)
+      const cone = Math.max(0.15, 0.9 - edgeProximity * 0.8); // narrower cone near edges
+      // sample angle within [-cone, +cone] around targetAngle
+      return targetAngle + (Math.random()*2 - 1) * cone;
     }
 
-    function radialBurst(r, x, y, count, speed, sizeRange=[2.8,6.8], edgeAware=false){
-      const c = prefersReduced ? Math.max(60, Math.round(count*0.4)) : count;
+    function radialBurst(r, x, y, count, speed, sizeRange=[3.2,7.2], edgeAware=false){
+      const c = prefersReduced ? Math.max(90, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
-        const angle = Math.random()*Math.PI*2;
-        let dir = { vx: Math.cos(angle), vy: Math.sin(angle) };
-        if(edgeAware) dir = inwardBiasedVector(r, angle, x, y);
+        let angle = edgeAware ? biasedAngleToCenter(r, x, y) : (Math.random()*Math.PI*2);
         const sp = rand(speed*0.6, speed*1.2);
         const col = choice(colors);
         const p = {
           shape: Math.random()<0.6 ? 'spark' : 'confetti',
           x, y,
-          vx: dir.vx * sp,
-          vy: dir.vy * sp,
-          life: rand(85, 135),
+          vx: Math.cos(angle) * sp,
+          vy: Math.sin(angle) * sp,
+          life: rand(85, 140),
           ttl: 0,
           size: rand(sizeRange[0], sizeRange[1]),
           color: col,
@@ -495,19 +551,17 @@
     }
 
     function starBurst(r, x, y, count, speed, edgeAware=false){
-      const c = prefersReduced ? Math.max(30, Math.round(count*0.4)) : count;
+      const c = prefersReduced ? Math.max(50, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
-        const angle = Math.random()*Math.PI*2;
-        let dir = { vx: Math.cos(angle), vy: Math.sin(angle) };
-        if(edgeAware) dir = inwardBiasedVector(r, angle, x, y, 0.8);
+        let angle = edgeAware ? biasedAngleToCenter(r, x, y) : (Math.random()*Math.PI*2);
         const sp = rand(speed*0.6, speed*1.1);
         const p = {
           shape:'star',
           x, y,
-          vx: dir.vx * sp,
-          vy: dir.vy * sp,
-          life: rand(65, 105),
+          vx: Math.cos(angle) * sp,
+          vy: Math.sin(angle) * sp,
+          life: rand(65, 110),
           ttl: 0,
           size: rand(3, 5),
           color: '#ffffff',
@@ -524,7 +578,7 @@
     }
 
     function ringBurst(r, x, y, count, radius){
-      const c = prefersReduced ? Math.max(40, Math.round(count*0.4)) : count;
+      const c = prefersReduced ? Math.max(60, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
         const t = (i/c) * Math.PI*2;
@@ -532,8 +586,7 @@
         const vy = Math.sin(t) * (radius/18);
         const p = {
           shape: 'spark',
-          x, y,
-          vx, vy,
+          x, y, vx, vy,
           life: rand(75, 115),
           ttl: 0,
           size: rand(2.2, 3.8),
@@ -551,7 +604,7 @@
     }
 
     function crackle(r, x, y, count){
-      const c = prefersReduced ? Math.max(40, Math.round(count*0.4)) : count;
+      const c = prefersReduced ? Math.max(60, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
         const angle = Math.random()*Math.PI*2;
@@ -577,28 +630,23 @@
       }
     }
 
-    // Consistent, heavier show per click
+    // Heavier, consistent show per click
     function fireworksShow(r, x, y, intensity = 1.0, edgeAware = false){
       const I = intensity;
       addFlash(r, x, y);
-
-      // Main blast (edgeAware for global, not needed for card)
-      radialBurst(r, x, y, Math.round(320 * I), 5.9, [3.0,7.0], edgeAware);
-      starBurst  (r, x, y, Math.round(140 * I), 5.0, edgeAware);
-      ringBurst  (r, x, y, Math.round(110 * I), 180);
-      setTimeout(()=> crackle(r, x, y, Math.round(200 * I)), 110);
-
-      // Follow-ups for richness
-      setTimeout(()=> radialBurst(r, x, y-24, Math.round(180 * I), 5.3, [2.6,6.2], edgeAware), 120);
-      setTimeout(()=> starBurst  (r, x+8, y-18, Math.round(100 * I), 4.4, edgeAware), 200);
+      radialBurst(r, x, y, Math.round(360 * I), 6.0, [3.2,7.2], edgeAware);
+      starBurst  (r, x, y, Math.round(180 * I), 5.0, edgeAware);
+      ringBurst  (r, x, y, Math.round(140 * I), 180);
+      setTimeout(()=> crackle(r, x, y, Math.round(240 * I)), 110);
+      setTimeout(()=> radialBurst(r, x, y-24, Math.round(220 * I), 5.3, [2.6,6.2], edgeAware), 120);
+      setTimeout(()=> starBurst  (r, x+8, y-18, Math.round(140 * I), 4.4, edgeAware), 200);
     }
 
     function stepRenderer(r){
       const ctx = r.ctx;
-      // Clear using CSS pixel units (transform already set to dpr in resize)
       ctx.clearRect(0, 0, r.cssW, r.cssH);
 
-      // Flashes
+      // flashes
       for(let i=r.flashes.length-1;i>=0;i--){
         const f = r.flashes[i];
         f.r = (f.r||0) + 6;
@@ -611,7 +659,7 @@
         if(f.alpha < 0.02) r.flashes.splice(i,1);
       }
 
-      // Trails & glow
+      // trails & glow
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for(const p of r.particles){
@@ -645,7 +693,7 @@
         ctx.fill();
       }
 
-      // Shapes
+      // shapes
       ctx.globalCompositeOperation = 'source-over';
       for(let i=r.particles.length-1; i>=0; i--){
         const p = r.particles[i];
@@ -697,29 +745,84 @@
       ctx.fill();
     }
 
-    // Start render loops
-    stepRenderer(globalR);
-    stepRenderer(cardR);
-
     /* =========================
-       CLICK HANDLERS
+       ENVELOPE & MUSIC (play on open, fade on close)
        ========================= */
-    // Main heart -> fireworks on the CARD (clipped to card) — centered & heavy
-    const mainHeart = document.getElementById('mainHeart');
-    const card = document.querySelector('.card');
-    mainHeart.addEventListener('click', ()=>{
-      const heartRect = mainHeart.getBoundingClientRect();
-      const cardRect  = card.getBoundingClientRect();
+    const envelope = document.querySelector('.envelope');
+    const envelopeCard = document.getElementById('envelopeCard');
+    const sealBtn = document.getElementById('sealBtn');
+    const bgm = document.getElementById('bgm');
+    let musicStarted = false;
 
-      // Precise heart center in card-local CSS pixels
-      const x = (heartRect.left + heartRect.width/2) - cardRect.left;
-      const y = (heartRect.top + heartRect.height/2) - cardRect.top;
+    // Smooth fade helper for <audio>
+    function fadeAudio(toVol, ms=800){
+      return new Promise(resolve=>{
+        if(!bgm) return resolve();
+        const from = bgm.volume;
+        const start = performance.now();
+        const dur = Math.max(1, ms);
+        function step(t){
+          const k = Math.min(1, (t - start)/dur);
+          bgm.volume = from + (toVol - from) * k;
+          if(k < 1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
 
-      fireworksShow(cardR, x, y, 1.6 /* much more in the card */, /*edgeAware*/ false);
-      pulse(mainHeart);
+    async function openEnvelopeWithFX(originX, originY){
+      envelope.classList.add('open');
+      fireworksShow(cardR, originX, originY, 2.0, false); // dense inside
+      if(!bgm) return;
+      try{
+        if(!musicStarted){
+          bgm.volume = 0.0;
+          await bgm.play(); // user gesture: allowed
+          musicStarted = true;
+        }
+        await fadeAudio(0.9, 900); // fade in
+      }catch(e){ console.warn('Audio play issue:', e); }
+    }
+
+    async function closeEnvelope(){
+      envelope.classList.remove('open');
+      if(!bgm) return;
+      try{
+        await fadeAudio(0.0, 900);
+        bgm.pause();
+        bgm.volume = 0.0;
+      }catch(e){ console.warn('Audio pause issue:', e); }
+    }
+
+    // Toggle by tapping seal
+    sealBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const envRect = envelope.getBoundingClientRect();
+      const sealRect = sealBtn.getBoundingClientRect();
+      const x = (sealRect.left + sealRect.width/2) - envRect.left;
+      const y = (sealRect.top + sealRect.height/2) - envRect.top;
+      if(envelope.classList.contains('open')){
+        closeEnvelope();
+      }else{
+        openEnvelopeWithFX(x, y);
+      }
     });
 
-    // NOTE: No auto fireworks. Only on clicks. ✅
+    // Also allow tapping anywhere on the card to open/close
+    envelopeCard.addEventListener('click', (e)=>{
+      const envRect = envelope.getBoundingClientRect();
+      const x = e.clientX - envRect.left;
+      const y = e.clientY - envRect.top;
+      if(envelope.classList.contains('open')){
+        closeEnvelope();
+      }else{
+        openEnvelopeWithFX(x, y);
+      }
+    });
+
+    // Create background hearts now that renderers are ready
+    placeBackgroundHearts();
 
   })();
   </script>
