@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>For You ❤️</title>
-  <meta name="description" content="An envelope love note with hidden text, heart seal, fireworks, and music with fade." />
+  <meta name="description" content="An envelope love note with hidden text, heart seal, fireworks, and music with fade + resume." />
   <style>
     :root{
       --bg1:#ffd6e7;
@@ -108,7 +108,7 @@
       opacity: 0.85;
     }
 
-    /* Heart seal */
+    /* Heart seal (stays visible after opening, smaller at top-center) */
     .seal{
       position: absolute;
       top: 26%;
@@ -156,7 +156,6 @@
       pointer-events: none;
     }
 
-    /* After opening: keep the seal visible, smaller, moved up so it doesn't overlap text */
     .envelope.open .seal{
       top: 12%;
       transform: translate(-50%, -50%) scale(0.72);
@@ -190,7 +189,7 @@
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
-      padding-top: 80px; /* space since the seal stays visible above */
+      padding-top: 80px; /* space so the visible seal doesn’t overlap */
     }
 
     h1{
@@ -317,7 +316,7 @@
     </div>
   </section>
 
-  <!-- ✅ Proper audio tag for your song -->
+  <!-- ✅ Proper audio tag for your song (plays inline on mobile) -->
   <audio id="bgm" src="Janiye(KoshalWorld.Com).mp3" preload="auto" playsinline></audio>
 
   <script>
@@ -433,7 +432,7 @@
           bx = Math.max(CLAMP, Math.min(innerWidth  - CLAMP, bx));
           by = Math.max(CLAMP, Math.min(innerHeight - CLAMP, by));
 
-          // Target bias = envelope center (so edge hearts throw inward)
+          // Target bias = envelope center (so edge hearts throw inward toward the card)
           const envRect = document.querySelector('.envelope').getBoundingClientRect();
           const tx = envRect.left + envRect.width/2;
           const ty = envRect.top  + envRect.height/2;
@@ -539,7 +538,7 @@
           ? biasedAngleToTarget(r, x, y, targetX, targetY)
           : (Math.random()*Math.PI*2);
 
-        // Slightly reduce speed and increase life near edges (if edgeAware)
+        // Slightly reduce speed and increase life when edgeAware for better visibility
         const speedScale = edgeAware ? 0.9 : 1.0;
         const lifeBoost  = edgeAware ? 1.1 : 1.0;
 
@@ -775,16 +774,15 @@
     }
 
     /* =========================
-       ENVELOPE & MUSIC (play on open, fade on close)
+       ENVELOPE & MUSIC (play on open, fade on close, RESUME)
        ========================= */
     const envelope = document.querySelector('.envelope');
     const envelopeCard = document.getElementById('envelopeCard');
     const sealBtn = document.getElementById('sealBtn');
     const bgm = document.getElementById('bgm');
-    let musicStarted = false;
 
     // Smooth fade helper for <audio>
-    function fadeAudio(toVol, ms=800){
+    function fadeAudio(toVol, ms = 800){
       return new Promise(resolve=>{
         if(!bgm) return resolve();
         const from = bgm.volume;
@@ -805,10 +803,9 @@
       fireworksShow(cardR, originX, originY, 2.0, {}); // dense inside
       if(!bgm) return;
       try{
-        if(!musicStarted){
-          bgm.volume = 0.0;
-          await bgm.play(); // user gesture: allowed
-          musicStarted = true;
+        // Always resume if paused (do NOT reset currentTime)
+        if (bgm.paused) {
+          await bgm.play(); // user gesture => should succeed
         }
         await fadeAudio(0.9, 900); // fade in
       }catch(e){ console.warn('Audio play issue:', e); }
@@ -818,9 +815,10 @@
       envelope.classList.remove('open');
       if(!bgm) return;
       try{
-        await fadeAudio(0.0, 900);
+        await fadeAudio(0.0, 900); // fade out
         bgm.pause();
-        bgm.volume = 0.0;
+        // Keep currentTime as-is so next open resumes from here
+        bgm.volume = 0.0; // stays at 0 for a clean fade-in next time
       }catch(e){ console.warn('Audio pause issue:', e); }
     }
 
@@ -850,6 +848,13 @@
       }
     });
 
+    // ✅ Auto-recover audio if user returns to tab and envelope is open
+    document.addEventListener('visibilitychange', ()=>{
+      if (!document.hidden && bgm && envelope.classList.contains('open') && bgm.paused) {
+        bgm.play().catch(()=>{ /* ignore if blocked */ });
+      }
+    });
+
     // Create background hearts once renderers are ready
     placeBackgroundHearts();
 
@@ -857,4 +862,3 @@
   </script>
 </body>
 </html>
-``
