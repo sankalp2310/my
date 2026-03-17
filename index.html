@@ -190,7 +190,7 @@
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
-      padding-top: 80px; /* give space since the seal stays visible above */
+      padding-top: 80px; /* space since the seal stays visible above */
     }
 
     h1{
@@ -286,7 +286,7 @@
     #cardFx{
       position:absolute;
       inset:0;
-      z-index: 2;          /* behind the letter so text stays readable */
+      z-index: 2;          /* behind letter so text stays readable */
       pointer-events:none;
       border-radius: inherit;
     }
@@ -317,7 +317,7 @@
     </div>
   </section>
 
-  <!-- Your song: plays when opening, fades out when closing -->
+  <!-- ✅ Proper audio tag for your song -->
   <audio id="bgm" src="Janiye(KoshalWorld.Com).mp3" preload="auto" playsinline></audio>
 
   <script>
@@ -427,11 +427,21 @@
           const r = btn.getBoundingClientRect();
           let bx = r.left + r.width/2;
           let by = r.top + r.height/2;
-          // Stronger inward clamp to keep bursts visible
-          const margin = 120;
-          bx = Math.max(margin, Math.min(innerWidth  - margin, bx));
-          by = Math.max(margin, Math.min(innerHeight - margin, by));
-          fireworksShow(globalR, bx, by, 2.1, /*edgeAware*/ true);
+
+          // Clamp origin deeper inside the viewport so bursts are visible
+          const CLAMP = 160;
+          bx = Math.max(CLAMP, Math.min(innerWidth  - CLAMP, bx));
+          by = Math.max(CLAMP, Math.min(innerHeight - CLAMP, by));
+
+          // Target bias = envelope center (so edge hearts throw inward)
+          const envRect = document.querySelector('.envelope').getBoundingClientRect();
+          const tx = envRect.left + envRect.width/2;
+          const ty = envRect.top  + envRect.height/2;
+
+          fireworksShow(globalR, bx, by, 2.1, { edgeAware:true, targetX:tx, targetY:ty });
+          // Extra local halo right around the heart so it "bursts around itself"
+          localHalo(globalR, bx, by);
+
           pulse(btn);
         });
 
@@ -445,8 +455,6 @@
         { transform: 'scale(1)' }
       ], { duration: 300, easing: 'ease-out' });
     }
-    placeBackgroundHearts();
-    addEventListener('resize', placeBackgroundHearts);
 
     /* =========================
        FIREWORKS / CONFETTI ENGINE
@@ -496,6 +504,8 @@
     addEventListener('resize', ()=>{
       resizeRenderer(globalR);
       resizeRenderer(cardR);
+      // re-place hearts on resize so they fit the new safe areas
+      placeBackgroundHearts();
     });
 
     function rand(min, max){ return Math.random()*(max-min)+min; }
@@ -508,33 +518,39 @@
       if(overflow > 0){ r.particles.splice(0, overflow); }
     }
 
-    /* Edge-aware: pick angles in a cone pointing toward screen center when near edges */
-    function biasedAngleToCenter(r, x, y){
-      const cx = r.cssW * 0.5;
-      const cy = r.cssH * 0.5;
-      const targetAngle = Math.atan2(cy - y, cx - x);
-      const margin = 160; // how close to edge we consider "biased"
+    /* Pick angles in a cone pointing toward a target (envelope center) when near edges */
+    function biasedAngleToTarget(r, x, y, tx, ty){
+      const targetAngle = Math.atan2(ty - y, tx - x);
+      // Cone width depends on proximity to any edge (narrower near edges)
+      const margin = 180;
       const dx = Math.min(x, r.cssW - x);
       const dy = Math.min(y, r.cssH - y);
       const edgeProximity = Math.max(0, 1 - Math.min(dx, dy) / margin); // 0 (safe) -> 1 (edge)
-      const cone = Math.max(0.15, 0.9 - edgeProximity * 0.8); // narrower cone near edges
-      // sample angle within [-cone, +cone] around targetAngle
+      const cone = Math.max(0.12, 0.9 - edgeProximity * 0.8); // radians
       return targetAngle + (Math.random()*2 - 1) * cone;
     }
 
-    function radialBurst(r, x, y, count, speed, sizeRange=[3.2,7.2], edgeAware=false){
+    function radialBurst(r, x, y, count, speed, sizeRange=[3.2,7.2], options={}){
+      const { edgeAware=false, targetX=null, targetY=null } = options;
       const c = prefersReduced ? Math.max(90, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
-        let angle = edgeAware ? biasedAngleToCenter(r, x, y) : (Math.random()*Math.PI*2);
-        const sp = rand(speed*0.6, speed*1.2);
+        let angle = (edgeAware && targetX!=null && targetY!=null)
+          ? biasedAngleToTarget(r, x, y, targetX, targetY)
+          : (Math.random()*Math.PI*2);
+
+        // Slightly reduce speed and increase life near edges (if edgeAware)
+        const speedScale = edgeAware ? 0.9 : 1.0;
+        const lifeBoost  = edgeAware ? 1.1 : 1.0;
+
+        const sp = rand(speed*0.6, speed*1.2) * speedScale;
         const col = choice(colors);
         const p = {
           shape: Math.random()<0.6 ? 'spark' : 'confetti',
           x, y,
           vx: Math.cos(angle) * sp,
           vy: Math.sin(angle) * sp,
-          life: rand(85, 140),
+          life: rand(85, 140) * lifeBoost,
           ttl: 0,
           size: rand(sizeRange[0], sizeRange[1]),
           color: col,
@@ -550,18 +566,25 @@
       }
     }
 
-    function starBurst(r, x, y, count, speed, edgeAware=false){
+    function starBurst(r, x, y, count, speed, options={}){
+      const { edgeAware=false, targetX=null, targetY=null } = options;
       const c = prefersReduced ? Math.max(50, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
-        let angle = edgeAware ? biasedAngleToCenter(r, x, y) : (Math.random()*Math.PI*2);
-        const sp = rand(speed*0.6, speed*1.1);
+        let angle = (edgeAware && targetX!=null && targetY!=null)
+          ? biasedAngleToTarget(r, x, y, targetX, targetY)
+          : (Math.random()*Math.PI*2);
+
+        const speedScale = edgeAware ? 0.9 : 1.0;
+        const lifeBoost  = edgeAware ? 1.1 : 1.0;
+
+        const sp = rand(speed*0.6, speed*1.1) * speedScale;
         const p = {
           shape:'star',
           x, y,
           vx: Math.cos(angle) * sp,
           vy: Math.sin(angle) * sp,
-          life: rand(65, 110),
+          life: rand(65, 110) * lifeBoost,
           ttl: 0,
           size: rand(3, 5),
           color: '#ffffff',
@@ -630,16 +653,22 @@
       }
     }
 
+    // Small local halo so the burst is visible around the heart itself
+    function localHalo(r, x, y){
+      ringBurst(r, x, y, 40, 90);     // tight ring
+      starBurst(r, x, y, 40, 2.8);    // gentle white sparkles
+    }
+
     // Heavier, consistent show per click
-    function fireworksShow(r, x, y, intensity = 1.0, edgeAware = false){
+    function fireworksShow(r, x, y, intensity = 1.0, options={}){
       const I = intensity;
       addFlash(r, x, y);
-      radialBurst(r, x, y, Math.round(360 * I), 6.0, [3.2,7.2], edgeAware);
-      starBurst  (r, x, y, Math.round(180 * I), 5.0, edgeAware);
+      radialBurst(r, x, y, Math.round(360 * I), 6.0, [3.2,7.2], options);
+      starBurst  (r, x, y, Math.round(180 * I), 5.0, options);
       ringBurst  (r, x, y, Math.round(140 * I), 180);
       setTimeout(()=> crackle(r, x, y, Math.round(240 * I)), 110);
-      setTimeout(()=> radialBurst(r, x, y-24, Math.round(220 * I), 5.3, [2.6,6.2], edgeAware), 120);
-      setTimeout(()=> starBurst  (r, x+8, y-18, Math.round(140 * I), 4.4, edgeAware), 200);
+      setTimeout(()=> radialBurst(r, x, y-24, Math.round(220 * I), 5.3, [2.6,6.2], options), 120);
+      setTimeout(()=> starBurst  (r, x+8, y-18, Math.round(140 * I), 4.4, options), 200);
     }
 
     function stepRenderer(r){
@@ -773,7 +802,7 @@
 
     async function openEnvelopeWithFX(originX, originY){
       envelope.classList.add('open');
-      fireworksShow(cardR, originX, originY, 2.0, false); // dense inside
+      fireworksShow(cardR, originX, originY, 2.0, {}); // dense inside
       if(!bgm) return;
       try{
         if(!musicStarted){
@@ -821,10 +850,11 @@
       }
     });
 
-    // Create background hearts now that renderers are ready
+    // Create background hearts once renderers are ready
     placeBackgroundHearts();
 
   })();
   </script>
 </body>
 </html>
+``
