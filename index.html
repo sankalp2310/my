@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>For You ❤️</title>
-  <meta name="description" content="A tiny love note with hearts, fireworks, and floating compliments." />
+  <meta name="description" content="A love note with hearts, fireworks, and floating compliments." />
   <style>
     :root{
       --bg1:#ffd6e7;
@@ -42,7 +42,7 @@
       background-attachment: fixed;
     }
 
-    /* Global fireworks/confetti canvas (background) */
+    /* Global fireworks/confetti canvas (for background hearts only) */
     canvas#fx {
       position: fixed;
       inset: 0;
@@ -55,7 +55,7 @@
       position:relative;
       z-index:4; /* above background hearts */
       width:min(92vw, 720px);
-      padding: clamp(18px, 5vw, 40px);
+      padding: 28px 28px 32px;
       border-radius: 24px;
       background: linear-gradient(180deg, var(--glass-bg1), var(--glass-bg2));
       border: 1px solid var(--glass-border);
@@ -65,14 +65,13 @@
         0 14px 48px var(--shadow),
         inset 0 1px 0 #ffffff80;
       overflow: hidden; /* clip card fireworks inside the rounded card */
-      margin: env(safe-area-inset-top) auto env(safe-area-inset-bottom);
     }
 
     /* Card-local canvas (confined to the card) */
     .card canvas#cardFx{
       position:absolute;
       inset:0;
-      z-index:5;           /* on top of card content */
+      z-index:5;           /* above content so it glows; change to 1 to put behind */
       pointer-events:none; /* keep button clickable */
       border-radius: inherit;
     }
@@ -80,24 +79,22 @@
     h1{
       margin:0 0 10px 0;
       font-weight: 900;
-      font-size: clamp(28px, 7vw, 64px);
+      font-size: clamp(32px, 7vw, 64px);
       letter-spacing: 0.4px;
-      text-wrap: balance;
       text-shadow: 0 2px 10px rgba(0,0,0,0.15);
       animation: fade 2.2s ease-in-out infinite alternate;
     }
 
     p{
       margin: 0;
-      font-size: clamp(16px, 4.4vw, 24px);
+      font-size: clamp(18px, 4.4vw, 24px);
       line-height: 1.5;
       opacity: 0.98;
-      text-wrap: pretty;
     }
 
     .sparkles{
       margin-top: 8px;
-      font-size: clamp(16px, 4vw, 22px);
+      font-size: clamp(18px, 4vw, 22px);
       letter-spacing: 2px;
       opacity: 0.9;
     }
@@ -185,13 +182,21 @@
       touch-action: manipulation;
       transition: transform .15s ease, box-shadow .2s ease;
       animation: bob 3.2s ease-in-out infinite;
+      font-size: 22px;
+      line-height: 1;
+
+      /* Per-heart randomized CSS variables set by JS */
+      --bobAmp: 10px;
+      --bobDelay: 0s;
+      --bobDur: 3.2s;
     }
-    .bg-heart:hover{ transform: translateY(-2px) scale(1.03); }
+    .bg-heart{ animation-duration: var(--bobDur); animation-delay: var(--bobDelay); }
+    .bg-heart:hover{ transform: translateY(-2px) scale(1.05); }
     .bg-heart:active{ transform: translateY(0) scale(0.98); }
 
     @keyframes bob{
       0%,100%{ transform: translateY(0); }
-      50%{ transform: translateY(-6px); }
+      50%{ transform: translateY(calc(-1 * var(--bobAmp))); }
     }
 
     /* Reduced motion */
@@ -228,8 +233,6 @@
   <script>
   (function(){
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isSmallScreen = Math.min(innerWidth, innerHeight) <= 480; // phones
-    const mobileBoost = prefersReduced ? 0.8 : (isSmallScreen ? 1.35 : 1.0); // stronger on phones
 
     /* =========================
        FLOATING EMOJIS + PHRASES
@@ -238,7 +241,7 @@
     const emojis = ["💖","💘","💝","💗","🌸","🌷","🌹","🌺","✨","💞"];
     const phrases = ["prettiest eyes", "cutest smile"];
     const floatPoolSize = 36;
-    const floatActive = prefersReduced ? 10 : (isSmallScreen ? 18 : 24);
+    const floatActive = prefersReduced ? 10 : 24;
     const floats = [];
 
     function makeFloat(){
@@ -258,7 +261,7 @@
       f.el.textContent = token;
       f.el.classList.toggle('text', f.isText);
 
-      f.size = ((f.isText ? 18 : 22) + Math.random() * (f.isText ? 10 : 28)) * (isSmallScreen ? 1.1 : 1);
+      f.size = (f.isText ? 18 : 22) + Math.random() * (f.isText ? 10 : 28);
       f.el.style.fontSize = f.size + 'px';
 
       f.x = Math.random()*vw;
@@ -267,7 +270,7 @@
       f.vy = - (0.55 + Math.random()*0.9) * (vh/1100);
       f.rot = Math.random()*360;
       f.vrot = (Math.random()-0.5) * 0.5;
-      f.opacity = 0.75 + Math.random()*0.25;
+      f.opacity = 0.7 + Math.random()*0.3;
       f.el.style.opacity = f.opacity.toFixed(2);
       f.alive = true;
       f.el.style.transform = `translate(${f.x}px, ${f.y}px) rotate(${f.rot}deg)`;
@@ -294,28 +297,37 @@
        BACKGROUND HEART BUTTONS
        ========================= */
     const bgHearts = document.querySelector('.bg-hearts');
-    const HEART_COUNT = prefersReduced ? 6 : (isSmallScreen ? 10 : 12);
+    const HEART_COUNT = prefersReduced ? 6 : 12; // number of random hearts
+
     function placeBackgroundHearts(){
       bgHearts.innerHTML = '';
       const vw = innerWidth, vh = innerHeight;
       for(let i=0;i<HEART_COUNT;i++){
         const btn = document.createElement('button');
         btn.className = 'bg-heart';
-        const size = Math.round((44 + Math.random()*24) * (isSmallScreen ? 1.1 : 1)); // larger on phones
+        const size = Math.round(44 + Math.random()*24); // px
         btn.style.width = btn.style.height = size + 'px';
         btn.style.fontSize = Math.round(size*0.45) + 'px';
         btn.setAttribute('aria-label', 'Send love');
         btn.textContent = ['💗','💘','💖','💝'][Math.floor(Math.random()*4)];
 
-        // Safe random position (avoid card center)
+        // Randomized bobble (more than before)
+        const amp = (10 + Math.random()*14).toFixed(0) + 'px';  // 10–24px
+        const dur = (2.4 + Math.random()*1.8).toFixed(2) + 's'; // 2.4–4.2s
+        const delay = (-Math.random()*2).toFixed(2) + 's';      // stagger
+        btn.style.setProperty('--bobAmp', amp);
+        btn.style.setProperty('--bobDur', dur);
+        btn.style.setProperty('--bobDelay', delay);
+
+        // safe random position (avoid center where card is)
         let x = Math.random() * vw;
         let y = Math.random() * vh;
         const cardSafeW = Math.min(720, vw*0.92);
-        const cardSafeH = Math.max(260, vh * 0.35);
+        const cardSafeH = 260; // approx card height
         const cx = vw/2, cy = vh/2;
         const rx = cardSafeW/2 + 60, ry = cardSafeH/2 + 60;
         let tries = 0;
-        while(Math.abs(x - cx) < rx && Math.abs(y - cy) < ry && tries < 25){
+        while(Math.abs(x - cx) < rx && Math.abs(y - cy) < ry && tries < 20){
           x = Math.random() * vw;
           y = Math.random() * vh;
           tries++;
@@ -324,32 +336,39 @@
         btn.style.left = (x - size/2) + 'px';
         btn.style.top  = (y - size/2) + 'px';
 
-        // Background hearts -> background fireworks (global renderer)
+        // Background hearts -> background fireworks (edge-aware)
         btn.addEventListener('click', ()=>{
           const r = btn.getBoundingClientRect();
-          const bx = r.left + r.width/2;
-          const by = r.top + r.height/2;
-          fireworksShow(globalR, bx, by, 1.0); // consistent intensity
+          let bx = r.left + r.width/2;
+          let by = r.top + r.height/2;
+
+          // Clamp start location slightly inward so bursts stay visible
+          const margin = 70;
+          bx = Math.max(margin, Math.min(innerWidth - margin, bx));
+          by = Math.max(margin, Math.min(innerHeight - margin, by));
+
+          fireworksShow(globalR, bx, by, 1.2, /*edgeAware*/ true);
           pulse(btn);
         });
 
         bgHearts.appendChild(btn);
       }
     }
+
     function pulse(el){
       el.animate([
         { transform: 'scale(1)' },
-        { transform: 'scale(1.12)' },
+        { transform: 'scale(1.14)' },
         { transform: 'scale(1)' }
-      ], { duration: 280, easing: 'ease-out' });
+      ], { duration: 300, easing: 'ease-out' });
     }
+
     placeBackgroundHearts();
     addEventListener('resize', placeBackgroundHearts);
-    addEventListener('orientationchange', ()=> setTimeout(placeBackgroundHearts, 250));
 
     /* =========================
        FIREWORKS / CONFETTI ENGINE
-       (multi-canvas renderers + mobile tweaks)
+       (multi-canvas renderers)
        ========================= */
     const colors = [
       '#ff5fa2','#ffd166','#06d6a0','#118ab2','#ef476f','#ffffff',
@@ -362,8 +381,8 @@
         canvas, ctx,
         particles: [],
         flashes: [],
-        MAX_PARTICLES: prefersReduced ? 800 : 1400,
-        dpr: 1,
+        MAX_PARTICLES: prefersReduced ? 900 : 1600,
+        dpr: Math.min(2, window.devicePixelRatio || 1),
         cssW: 0, cssH: 0
       };
       resizeRenderer(r);
@@ -378,13 +397,13 @@
         const rect = r.canvas.getBoundingClientRect();
         w = rect.width; h = rect.height;
       }
-      const dpr = Math.min(2, window.devicePixelRatio || 1); // cap for perf
       r.cssW = Math.max(1, Math.floor(w));
       r.cssH = Math.max(1, Math.floor(h));
-      r.dpr = dpr;
-      r.canvas.width = Math.max(1, Math.floor(w * dpr));
-      r.canvas.height = Math.max(1, Math.floor(h * dpr));
-      r.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw using CSS pixels
+      r.canvas.width = Math.max(1, Math.floor(w * r.dpr));
+      r.canvas.height = Math.max(1, Math.floor(h * r.dpr));
+      r.ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0); // draw using CSS pixels
+      // Clear once after resize
+      r.ctx.clearRect(0, 0, r.cssW, r.cssH);
     }
 
     // Global/background renderer
@@ -392,7 +411,7 @@
     const globalR = createRenderer(globalCanvas);
 
     // Card-local renderer
-    const card = document.querySelector('.card');
+    const cardElem = document.querySelector('.card');
     const cardCanvas = document.getElementById('cardFx');
     const cardR = createRenderer(cardCanvas);
 
@@ -406,33 +425,62 @@
     function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
     function addFlash(r,x,y){
-      r.flashes.push({ x, y, r: 0, alpha: 0.5 });
+      r.flashes.push({ x, y, r: 0, alpha: 0.55 });
     }
 
-    // Ensure space so bursts don't get dropped (equal output per click)
+    // Make room for new bursts so clicks are always dense
     function ensureCapacity(r, addCount){
       const overflow = (r.particles.length + addCount) - r.MAX_PARTICLES;
       if(overflow > 0){
-        // Drop oldest to make room for new burst
         r.particles.splice(0, overflow);
       }
     }
 
-    function radialBurst(r, x, y, count, speed, sizeRange=[2.5,6]){
-      const c = Math.max(60, Math.round(count * mobileBoost)); // minimum count even on reduced motion
+    // Bias velocities inward if start is near screen edges (for global only)
+    function inwardBiasedVector(r, angle, x, y, biasStrength=0.9){
+      const vx = Math.cos(angle);
+      const vy = Math.sin(angle);
+      const w = r.cssW, h = r.cssH, margin = 120;
+      let bias = 0;
+
+      if(x < margin) bias = Math.max(bias, (margin - x) / margin);
+      if(x > w - margin) bias = Math.max(bias, (x - (w - margin)) / margin);
+      if(y < margin) bias = Math.max(bias, (margin - y) / margin);
+      if(y > h - margin) bias = Math.max(bias, (y - (h - margin)) / margin);
+
+      if(bias <= 0) return {vx, vy};
+
+      // Inward unit vector towards center
+      let dx = (w * 0.5) - x;
+      let dy = (h * 0.5) - y;
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+
+      // Mix random direction with inward direction
+      const mix = Math.min(1, bias * biasStrength);
+      let mx = vx*(1-mix) + dx*mix;
+      let my = vy*(1-mix) + dy*mix;
+      const mlen = Math.hypot(mx,my) || 1;
+      return { vx: mx/mlen, vy: my/mlen };
+    }
+
+    function radialBurst(r, x, y, count, speed, sizeRange=[2.8,6.8], edgeAware=false){
+      const c = prefersReduced ? Math.max(60, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
         const angle = Math.random()*Math.PI*2;
+        let dir = { vx: Math.cos(angle), vy: Math.sin(angle) };
+        if(edgeAware) dir = inwardBiasedVector(r, angle, x, y);
         const sp = rand(speed*0.6, speed*1.2);
         const col = choice(colors);
         const p = {
           shape: Math.random()<0.6 ? 'spark' : 'confetti',
           x, y,
-          vx: Math.cos(angle)*sp,
-          vy: Math.sin(angle)*sp,
-          life: rand(80, 130) * (isSmallScreen ? 1.1 : 1),
+          vx: dir.vx * sp,
+          vy: dir.vy * sp,
+          life: rand(85, 135),
           ttl: 0,
-          size: rand(sizeRange[0], sizeRange[1]) * (isSmallScreen ? 1.15 : 1),
+          size: rand(sizeRange[0], sizeRange[1]),
           color: col,
           rotation: rand(0, Math.PI*2),
           vr: rand(-0.2, 0.2),
@@ -446,20 +494,22 @@
       }
     }
 
-    function starBurst(r, x, y, count, speed){
-      const c = Math.max(30, Math.round(count * mobileBoost));
+    function starBurst(r, x, y, count, speed, edgeAware=false){
+      const c = prefersReduced ? Math.max(30, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
         const angle = Math.random()*Math.PI*2;
+        let dir = { vx: Math.cos(angle), vy: Math.sin(angle) };
+        if(edgeAware) dir = inwardBiasedVector(r, angle, x, y, 0.8);
         const sp = rand(speed*0.6, speed*1.1);
         const p = {
           shape:'star',
           x, y,
-          vx: Math.cos(angle)*sp,
-          vy: Math.sin(angle)*sp,
-          life: rand(60, 100) * (isSmallScreen ? 1.15 : 1),
+          vx: dir.vx * sp,
+          vy: dir.vy * sp,
+          life: rand(65, 105),
           ttl: 0,
-          size: rand(3, 5) * (isSmallScreen ? 1.2 : 1),
+          size: rand(3, 5),
           color: '#ffffff',
           rotation: rand(0, Math.PI*2),
           vr: rand(-0.25, 0.25),
@@ -474,7 +524,7 @@
     }
 
     function ringBurst(r, x, y, count, radius){
-      const c = Math.max(40, Math.round(count * mobileBoost));
+      const c = prefersReduced ? Math.max(40, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
         const t = (i/c) * Math.PI*2;
@@ -484,9 +534,9 @@
           shape: 'spark',
           x, y,
           vx, vy,
-          life: rand(70, 110) * (isSmallScreen ? 1.1 : 1),
+          life: rand(75, 115),
           ttl: 0,
-          size: rand(2.2, 3.8) * (isSmallScreen ? 1.2 : 1),
+          size: rand(2.2, 3.8),
           color: choice(colors),
           rotation: 0,
           vr: 0,
@@ -501,7 +551,7 @@
     }
 
     function crackle(r, x, y, count){
-      const c = Math.max(40, Math.round(count * mobileBoost));
+      const c = prefersReduced ? Math.max(40, Math.round(count*0.4)) : count;
       ensureCapacity(r, c);
       for(let i=0;i<c;i++){
         const angle = Math.random()*Math.PI*2;
@@ -511,9 +561,9 @@
           x, y,
           vx: Math.cos(angle)*sp,
           vy: Math.sin(angle)*sp,
-          life: rand(28, 55) * (isSmallScreen ? 1.2 : 1),
+          life: rand(30, 58),
           ttl: 0,
-          size: rand(2.2, 3.6) * (isSmallScreen ? 1.25 : 1),
+          size: rand(2.2, 3.6),
           color: '#ffffff',
           rotation: rand(0, Math.PI*2),
           vr: rand(-0.4,0.4),
@@ -527,43 +577,42 @@
       }
     }
 
-    // One consistent show per click (same on card & bg)
-    function fireworksShow(r, x, y, intensity = 1.0){
-      const I = intensity * mobileBoost;
+    // Consistent, heavier show per click
+    function fireworksShow(r, x, y, intensity = 1.0, edgeAware = false){
+      const I = intensity;
       addFlash(r, x, y);
-      radialBurst(r, x, y, Math.round(220 * I), 5.6, [2.6,6.5]);
-      starBurst(r, x, y, Math.round(90 * I), 4.9);
-      ringBurst(r, x, y, Math.round(80 * I), 180);
-      setTimeout(()=> crackle(r, x, y, Math.round(140 * I)), 110);
 
-      // Small follow-up to feel rich (equal everywhere)
-      setTimeout(()=> radialBurst(r, x, y-24, Math.round(140 * I), 5.2, [2.2,5.6]), 120);
-      setTimeout(()=> starBurst(r, x+8, y-18, Math.round(80 * I), 4.4), 200);
+      // Main blast (edgeAware for global, not needed for card)
+      radialBurst(r, x, y, Math.round(320 * I), 5.9, [3.0,7.0], edgeAware);
+      starBurst  (r, x, y, Math.round(140 * I), 5.0, edgeAware);
+      ringBurst  (r, x, y, Math.round(110 * I), 180);
+      setTimeout(()=> crackle(r, x, y, Math.round(200 * I)), 110);
+
+      // Follow-ups for richness
+      setTimeout(()=> radialBurst(r, x, y-24, Math.round(180 * I), 5.3, [2.6,6.2], edgeAware), 120);
+      setTimeout(()=> starBurst  (r, x+8, y-18, Math.round(100 * I), 4.4, edgeAware), 200);
     }
 
     function stepRenderer(r){
-      const ctx = r.ctx, canvas = r.canvas;
-      // Clear in device pixels (avoid blur on mobile)
-      ctx.setTransform(1,0,0,1,0,0);
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.setTransform(r.dpr, 0, 0, r.dpr, 0, 0);
+      const ctx = r.ctx;
+      // Clear using CSS pixel units (transform already set to dpr in resize)
+      ctx.clearRect(0, 0, r.cssW, r.cssH);
 
-      // Flashes (radial light)
+      // Flashes
       for(let i=r.flashes.length-1;i>=0;i--){
         const f = r.flashes[i];
         f.r = (f.r||0) + 6;
         f.alpha *= 0.92;
         const grd = ctx.createRadialGradient(f.x,f.y,0, f.x,f.y,f.r);
-        grd.addColorStop(0, `rgba(255,255,255,${Math.min(0.38,f.alpha)})`);
+        grd.addColorStop(0, `rgba(255,255,255,${Math.min(0.40,f.alpha)})`);
         grd.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = grd;
         ctx.fillRect(f.x - f.r, f.y - f.r, f.r*2, f.r*2);
         if(f.alpha < 0.02) r.flashes.splice(i,1);
       }
 
-      // Particles (two passes: trails/glow, then shapes)
+      // Trails & glow
       ctx.save();
-      // Trails & glow — brighter on phone
       ctx.globalCompositeOperation = 'lighter';
       for(const p of r.particles){
         const ox = p.x, oy = p.y;
@@ -583,7 +632,7 @@
 
         ctx.strokeStyle = p.color;
         ctx.globalAlpha = Math.min(1, a*0.95);
-        ctx.lineWidth = Math.max(isSmallScreen ? 1.6 : 1.2, p.size*0.24); // thicker on phones
+        ctx.lineWidth = Math.max(1.2, p.size*0.24);
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(ox, oy);
@@ -611,8 +660,7 @@
 
         if(p.shape === 'confetti'){
           ctx.fillStyle = p.color;
-          const w = p.size;
-          const h = p.size*0.6;
+          const w = p.size, h = p.size*0.6;
           ctx.fillRect(-w/2, -h/2, w, h);
         }else if(p.shape === 'star'){
           drawStar(ctx, 5, p.size, p.size*0.5, p.color);
@@ -656,20 +704,23 @@
     /* =========================
        CLICK HANDLERS
        ========================= */
-    // Main heart -> fireworks on the CARD (clipped to card)
+    // Main heart -> fireworks on the CARD (clipped to card) — centered & heavy
     const mainHeart = document.getElementById('mainHeart');
-    const cardElem = document.querySelector('.card');
+    const card = document.querySelector('.card');
     mainHeart.addEventListener('click', ()=>{
       const heartRect = mainHeart.getBoundingClientRect();
-      const cardRect = cardElem.getBoundingClientRect();
-      // Convert to card-local coordinates (CSS pixels)
+      const cardRect  = card.getBoundingClientRect();
+
+      // Precise heart center in card-local CSS pixels
       const x = (heartRect.left + heartRect.width/2) - cardRect.left;
       const y = (heartRect.top + heartRect.height/2) - cardRect.top;
-      fireworksShow(cardR, x, y, 1.1);
+
+      fireworksShow(cardR, x, y, 1.6 /* much more in the card */, /*edgeAware*/ false);
       pulse(mainHeart);
     });
 
     // NOTE: No auto fireworks. Only on clicks. ✅
+
   })();
   </script>
 </body>
