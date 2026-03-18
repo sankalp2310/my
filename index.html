@@ -79,7 +79,7 @@
   .bg-heart:active{ transform: translateY(0) scale(0.98); }
   @keyframes bob{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(calc(-1 * var(--bobAmp))); } }
 
-  /* Wall of 5 envelopes (always visible, even on phones) */
+  /* Desktop / tablet grid */
   .wall{
     position: relative; z-index: 4; /* below global confetti */
     width: 100vw; max-width: 1200px;
@@ -90,13 +90,13 @@
     align-items: center; justify-items: center;
   }
 
-  /* Envelope (closed size) — tiny so 5 fit on narrow phones */
+  /* Envelope (closed size) — desktop defaults */
   .envelope{
     position: relative;
     width: clamp(50px, 18vw, 190px);
     height: clamp(44px, 14vw, 140px);
     perspective: 900px;
-    transition: transform .25s ease, opacity .25s ease, filter .25s ease;
+    transition: transform .25s ease, opacity .25s ease, filter .25s ease, left .25s ease, top .25s ease;
     cursor: pointer;
   }
   .envelope.dim{ opacity: var(--dim); filter: blur(0.2px); }
@@ -108,6 +108,7 @@
     transform: translate(-50%, -50%);
     width: min(92vw, 740px);
     height: clamp(380px, 62vh, 560px);
+    animation: none !important; /* stop floating when opened */
   }
 
   /* Card glass */
@@ -146,7 +147,7 @@
   }
   .envelope.open .flap{ transform: rotateX(160deg); opacity: 0.85; }
 
-  /* Seal (tap) — remains visible after open, smaller near top */
+  /* Seal */
   .seal{
     position:absolute; top: 26%; left: 50%;
     transform: translate(-50%, -50%);
@@ -208,7 +209,55 @@
     pointer-events:none; border-radius: 18px;
   }
 
-  @media (max-height: 600px){ .wall{ gap: 4px; } .envelope{ transform: scale(0.9); } }
+  /* ====== MOBILE LAYOUT (forced by .mobile on <html>) ====== */
+  @keyframes floaty {
+    0%,100% { transform: translate(-50%, -50%); }
+    50%     { transform: translate(calc(-50% + 6px), calc(-50% - 6px)); }
+  }
+
+  .mobile .wall{
+    position: fixed; inset: 0; z-index: 4;
+    height: 100dvh;
+    display: block !important;
+    padding: 0;
+  }
+  .mobile .envelope{
+    position: absolute !important;
+    --w: 36vw;
+    width: var(--w);
+    height: calc(var(--w) * 0.74);
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    animation: floaty 10s ease-in-out infinite;
+  }
+  .mobile .envelope.pos-center{
+    left: 50%; top: 50%;
+    --w: 48vw; z-index: 6;
+    animation-duration: 11s;
+  }
+  .mobile .envelope.pos-top-left{
+    left: 18%; top: 22%;
+    --w: 34vw; animation-delay: -1.2s;
+  }
+  .mobile .envelope.pos-top-right{
+    left: 82%; top: 24%;
+    --w: 34vw; animation-delay: -2.0s;
+  }
+  .mobile .envelope.pos-bottom-left{
+    left: 20%; top: 78%;
+    --w: 34vw; animation-delay: -2.6s;
+  }
+  .mobile .envelope.pos-bottom-right{
+    left: 80%; top: 76%;
+    --w: 34vw; animation-delay: -3.3s;
+  }
+  .mobile .envelope.focused{
+    width: min(94vw, 760px) !important;
+    height: clamp(400px, 64dvh, 600px) !important;
+    animation: none !important;
+  }
+
+  @media (max-height: 600px){ .wall{ gap: 4px; } }
   @media (max-width: 360px){ .wall{ gap: 3px; } }
 </style>
 </head>
@@ -223,11 +272,24 @@
 <!-- Background clickable hearts -->
 <div class="bg-hearts" aria-hidden="false"></div>
 
-<!-- 5-envelope grid -->
+<!-- 5-envelope grid / mobile stage -->
 <section class="wall" id="wall"></section>
 
 <script>
 (function(){
+  /* ===== Force mobile layout via <html class="mobile"> when on phone ===== */
+  function isMobileLike(){
+    return (
+      window.innerWidth <= 920 ||
+      window.matchMedia('(hover: none) and (pointer: coarse)').matches
+    );
+  }
+  function setMobileFlag(){
+    document.documentElement.classList.toggle('mobile', isMobileLike());
+  }
+  setMobileFlag();
+  addEventListener('resize', setMobileFlag);
+
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ========= CONTENT ========= */
@@ -249,7 +311,7 @@
     "Haareya.mp3",
     "Iwannabeyours.mp3",
     "Perfect.mp3",
-    "Hale Dil.mp3"               // ✅ replaced
+    "Ishqa.mp3"               // as requested
   ];
 
   /* ===== Background floating emojis/phrases ===== */
@@ -301,10 +363,10 @@
   const envs = []; // {i, root, card, flap, seal, letter, titleEl, msgEl, flowersEl, canvas, audio, renderer}
   let currentOpen = -1, opening = false;
 
-  // Reorder DOM so the 1st envelope (I miss you) appears center on load
-  const indexOrder = [1, 2, 0, 3, 4];  // original index 0 goes third => center of 5 columns
+  // Place "I miss you" (original index 0) in center column on desktop grid
+  const indexOrder = [1, 2, 0, 3, 4];
 
-  for(const i of indexOrder){
+  for (const i of indexOrder){
     const root = document.createElement('div'); root.className = 'envelope'; root.dataset.index = i;
 
     const card = document.createElement('div'); card.className = 'card'; root.appendChild(card);
@@ -332,6 +394,21 @@
     wall.appendChild(root);
     envs.push({ i, root, card, flap, seal, letter, titleEl, msgEl, flowersEl, canvas, audio, renderer:null });
   }
+
+  /* Assign MOBILE positions by original id (0=center, 1/2 top, 3/4 bottom) */
+  function applyMobilePositions(){
+    envs.forEach(env=>{
+      env.root.classList.remove('pos-center','pos-top-left','pos-top-right','pos-bottom-left','pos-bottom-right');
+      const id = env.i;
+      if(id===0) env.root.classList.add('pos-center');        // I miss you
+      else if(id===1) env.root.classList.add('pos-top-left');
+      else if(id===2) env.root.classList.add('pos-top-right');
+      else if(id===3) env.root.classList.add('pos-bottom-left');
+      else if(id===4) env.root.classList.add('pos-bottom-right');
+    });
+  }
+  applyMobilePositions();
+  addEventListener('resize', applyMobilePositions);
 
   /* ===== Fireworks / Confetti engine ===== */
   const colors = ['#ff5fa2','#ffd166','#06d6a0','#118ab2','#ef476f','#ffffff','#ff85c1','#ffa3cf','#ffe066'];
@@ -486,7 +563,7 @@
   }
   function clearDim(){ envs.forEach(env=> env.root.classList.remove('dim')); }
 
-  /* ===== Tap → pre-burst (1s) → open ===== */
+  /* ===== Tap → pre-burst (~1s) → open ===== */
   async function handleTapToOpen(idx, originX, originY){
     if(opening) return; opening = true;
     const env = envs.find(e=>e.i===idx); if(!env){ opening=false; return; }
@@ -498,21 +575,19 @@
 
     // After ~0.9s, proceed to open
     setTimeout(async ()=>{
-      // If something else is open, close it first (no dim flicker)
       if(currentOpen !== -1){ await closeEnvelope(currentOpen, false); }
 
       env.root.classList.add('focused');
       requestAnimationFrame(async ()=>{
         env.root.classList.add('open');
         setDimOthers(idx);
-
         resizeRenderer(env.renderer); // match enlarged card
 
         const cr = env.card.getBoundingClientRect();
         const x2 = (typeof originX==='number') ? originX : cr.width/2;
         const y2 = (typeof originY==='number') ? originY : cr.height/2;
 
-        // Optional small welcome sparkle (not too heavy)
+        // Optional small sparkle on open
         ringBurst(env.renderer, x2, y2, 64, 180);
         starBurst(env.renderer, x2, y2, 80, 4.0);
 
@@ -527,7 +602,6 @@
   }
 
   async function openEnvelope(idx, originX=null, originY=null){
-    // kept for internal use if needed; main path is handleTapToOpen now
     return handleTapToOpen(idx, originX, originY);
   }
 
@@ -553,18 +627,16 @@
       const sr = env.seal.getBoundingClientRect();
       const x = (sr.left + sr.width/2) - cr.left;
       const y = (sr.top  + sr.height/2) - cr.top;
-
       if(env.root.classList.contains('open')) closeEnvelope(env.i);
-      else handleTapToOpen(env.i, x, y);   // PRE-BURST → OPEN
+      else handleTapToOpen(env.i, x, y);
     });
 
     env.card.addEventListener('click', (e)=>{
       e.stopPropagation();
       const cr = env.card.getBoundingClientRect();
       const x = e.clientX - cr.left, y = e.clientY - cr.top;
-
       if(env.root.classList.contains('open')) closeEnvelope(env.i);
-      else handleTapToOpen(env.i, x, y);   // PRE-BURST → OPEN
+      else handleTapToOpen(env.i, x, y);
     });
   });
 
@@ -577,7 +649,7 @@
     }
   });
 
-  /* ===== Global confetti for background hearts (BIGGER & more visible) ===== */
+  /* ===== Global confetti for background hearts (BIGGER) ===== */
   const bgCanvas = document.getElementById('bgFx');
   const bgR = createRenderer(bgCanvas);
   window.addEventListener('resize', ()=> resizeRenderer(bgR));
@@ -617,7 +689,7 @@
         let bx = r.left + r.width/2;
         let by = r.top  + r.height/2;
 
-        const CLAMP = 140; // a bit less, so more area is visible
+        const CLAMP = 140; // slightly less clamp = more visible area
         bx = Math.max(CLAMP, Math.min(innerWidth  - CLAMP, bx));
         by = Math.max(CLAMP, Math.min(innerHeight - CLAMP, by));
 
