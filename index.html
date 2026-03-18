@@ -156,11 +156,12 @@
     width: 56px; height: 56px; border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #ff87bd, #ff5fa2 60%, #f3429d 100%);
     box-shadow: 0 10px 28px var(--button-glow);
-    color: #fff; font-size: 24px; border: 0; line-height:1;
+    color: #fff; font-size: 16px; font-weight: 800; border: 0; line-height:1;
     user-select: none; touch-action: manipulation;
     transition: transform .2s ease, top .2s ease, opacity .2s ease;
     animation: sPulse 2.4s ease-in-out infinite;
     pointer-events: auto;
+    padding: 0 8px;
   }
   .seal:hover{ transform: translate(-50%, -50%) scale(1.03); }
   @keyframes sPulse{ 0%,100%{ transform: translate(-50%, -50%) scale(1); } 50%{ transform: translate(-50%, -50%) scale(1.05); } }
@@ -172,7 +173,7 @@
     color:#fff; opacity:0.9; text-shadow: 0 1px 2px rgba(0,0,0,0.35);
     pointer-events: none;
   }
-  .envelope.open .seal{ top: 12%; transform: translate(-50%, -50%) scale(0.72); }
+  .envelope.open .seal{ top: 12%; transform: translate(-50%, -50%) scale(0.9); }
 
   /* Letter content (hidden when closed) */
   .letter{
@@ -200,6 +201,56 @@
   }
   .flowers{
     margin-top: 10px; font-size: clamp(16px, 3vw, 24px); letter-spacing: 2px;
+  }
+
+  /* Mini audio player inside letter */
+  .player{
+    margin-top: 12px;
+    width: 92%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    user-select: none;
+  }
+  .player button.play{
+    background: #ffffff30;
+    color: #fff;
+    border: 1px solid #ffffff66;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  }
+  .player .time{
+    font-size: 12px;
+    min-width: 46px;
+    text-align: center;
+    opacity: 0.95;
+  }
+  .player input[type="range"]{
+    -webkit-appearance: none;
+    appearance: none;
+    width: 50%;
+    height: 6px;
+    border-radius: 999px;
+    background: #ffffff55;
+    outline: none;
+    cursor: pointer;
+  }
+  .player input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    border: 0;
+  }
+  .player input[type="range"]::-moz-range-thumb{
+    width: 14px; height: 14px; border: 0; border-radius: 50%; background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   }
 
   /* Per-envelope fireworks canvas — ABOVE letter so it's obvious */
@@ -305,8 +356,8 @@
   const messageBlocks = [
     ["I miss you soooo muchhh 🫠💕","Meera 👑","Love you ❣️"],
     ["I wish time had stopped when","I met you in Thailand.","That we’d just keep dancing together,","played bowling for 100 rounds,","stayed in bed and watched the next 50 seasons of Spotsvilla 🤭,","and never got off that train 🫠"],
-    ["I know I say I don’t expect or want anything in return,","but in this very moment, with all my being,","I just want you to be with me 🫠"],
     ["I’m writing everything because I can’t speak,","can’t stop smiling every time I look at you;","not because you look funny 🤭,","but because I feel so calm and peaceful when I see your eyes,","your smile, and hear you talk.","Waking up and falling asleep to your face is the best feeling I’ve ever had 💕"],
+    ["I know I say I don’t expect or want anything in return,","but in this very moment, with all my being,","I just want you to be with me 🫠"],
     ["This is just to tell you how much love you deserve-","because you’ll never realize your worth.","I wish you get everything your heart wants,","and, just think only about you, fight for what you want-","there’s a long life ahead 💪💕"]
   ];
   const flowersLine = "🌸🌸🌸🌸🌸🌸"; // 6 flowers
@@ -315,8 +366,8 @@
   const songs = [
     "Janiye(KoshalWorld.Com).mp3",
     "Tune Jo Na Kaha.mp3",
-    "Iwannabeyours.mp3",
     "Perfect.mp3",
+    "Iwannabeyours.mp3",
     "Jhol.mp3"
   ];
 
@@ -366,7 +417,7 @@
 
   /* ===== Build 5 envelopes ===== */
   const wall = document.getElementById('wall');
-  const envs = []; // {i, root, card, flap, seal, letter, titleEl, msgEl, flowersEl, canvas, audio, renderer}
+  const envs = []; // {i, root, card, flap, seal, letter, titleEl, msgEl, flowersEl, canvas, audio, renderer, player}
   let currentOpen = -1, opening = false;
 
   // Place "I miss you" (original index 0) in center column on desktop grid
@@ -381,7 +432,10 @@
     const canvas = document.createElement('canvas'); canvas.className = 'fx'; canvas.width=1; canvas.height=1; card.appendChild(canvas);
 
     const seal = document.createElement('button');
-    seal.className = 'seal'; seal.setAttribute('aria-label','Open or close envelope'); seal.textContent = '💗';
+    seal.className = 'seal';
+    seal.setAttribute('aria-label','Open or close envelope');
+    /* Spelling fixed + bold numbering */
+    seal.innerHTML = `<strong>Envelope ${i + 1}</strong>`;
     card.appendChild(seal);
 
     const letter = document.createElement('div'); letter.className = 'letter';
@@ -390,7 +444,18 @@
     msgEl.innerHTML = messageBlocks[i].join('<br/>');
     const flowersEl = document.createElement('div'); flowersEl.className = 'flowers'; flowersEl.textContent = flowersLine;
 
-    letter.appendChild(titleEl); letter.appendChild(msgEl); letter.appendChild(flowersEl);
+    /* === Mini player (play/pause + seek + time) === */
+    const player = document.createElement('div'); player.className = 'player';
+    const btn = document.createElement('button'); btn.className = 'play'; btn.textContent = 'Play';
+    const cur = document.createElement('span'); cur.className = 'time'; cur.textContent = '0:00';
+    const seek = document.createElement('input'); seek.type = 'range'; seek.min = '0'; seek.max = '0'; seek.step = '0.1'; seek.value = '0';
+    const dur = document.createElement('span'); dur.className = 'time'; dur.textContent = '0:00';
+    player.appendChild(btn); player.appendChild(cur); player.appendChild(seek); player.appendChild(dur);
+
+    letter.appendChild(titleEl);
+    letter.appendChild(msgEl);
+    letter.appendChild(flowersEl);
+    letter.appendChild(player);
     card.appendChild(letter);
 
     const audio = document.createElement('audio');
@@ -403,7 +468,7 @@
     root.appendChild(audio);
 
     wall.appendChild(root);
-    envs.push({ i, root, card, flap, seal, letter, titleEl, msgEl, flowersEl, canvas, audio, renderer:null });
+    envs.push({ i, root, card, flap, seal, letter, titleEl, msgEl, flowersEl, canvas, audio, renderer:null, player:{ btn, cur, seek, dur } });
   }
 
   /* ===== Fireworks / Confetti engine ===== */
@@ -547,6 +612,8 @@
       if (env.audio.load) env.audio.load();
       if(env.audio.paused){ await env.audio.play(); }
       await fadeAudio(env.audio, 1.0, 900);
+      // update play button
+      if (env.player && env.player.btn) env.player.btn.textContent = 'Pause';
     }catch(e){}
   }
   async function pauseEnvelopeAudio(env){
@@ -555,11 +622,71 @@
       await fadeAudio(env.audio, 0.0, 700);
       env.audio.pause();
       env.audio.volume = 0.0;
+      if (env.player && env.player.btn) env.player.btn.textContent = 'Play';
     }catch(e){}
   }
   async function pauseAllExcept(idx){
     await Promise.allSettled(envs.map(e => e.i!==idx ? pauseEnvelopeAudio(e) : null));
   }
+
+  /* ===== Player wiring (seek bar + time) ===== */
+  function fmt(t){
+    if(!isFinite(t) || t<0) t = 0;
+    const m = Math.floor(t/60); const s = Math.floor(t%60);
+    return m + ':' + (s<10 ? '0'+s : s);
+  }
+  function wirePlayer(env){
+    const audio = env.audio;
+    const { btn, cur, seek, dur } = env.player;
+    let dragging = false;
+
+    audio.addEventListener('loadedmetadata', ()=>{
+      const d = isFinite(audio.duration) ? audio.duration : 0;
+      seek.max = String(d);
+      dur.textContent = fmt(d);
+    });
+
+    audio.addEventListener('timeupdate', ()=>{
+      if (!dragging){
+        seek.value = String(audio.currentTime || 0);
+        cur.textContent = fmt(audio.currentTime || 0);
+      }
+    });
+
+    audio.addEventListener('ended', ()=>{
+      // Reset to start on end
+      seek.value = '0';
+      cur.textContent = '0:00';
+      btn.textContent = 'Play';
+    });
+
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      if(audio.paused) await playEnvelopeAudio(env);
+      else await pauseEnvelopeAudio(env);
+    });
+
+    const dragStart = ()=>{ dragging = true; };
+    const dragEnd = async ()=>{
+      dragging = false;
+      const t = Number(seek.value || 0);
+      try{ audio.currentTime = t; }catch(e){}
+      cur.textContent = fmt(t);
+    };
+
+    seek.addEventListener('input', ()=>{
+      if(!dragging) dragging = true;
+      const t = Number(seek.value || 0);
+      cur.textContent = fmt(t);
+    });
+    seek.addEventListener('change', dragEnd);
+    seek.addEventListener('pointerdown', dragStart);
+    seek.addEventListener('pointerup', dragEnd);
+    seek.addEventListener('touchstart', dragStart, {passive:true});
+    seek.addEventListener('touchend', dragEnd);
+  }
+
+  envs.forEach(env => wirePlayer(env));
 
   /* ===== Dim helpers (only others dim) ===== */
   function setDimOthers(openId){
