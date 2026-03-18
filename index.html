@@ -572,7 +572,7 @@
     for(let i=r.particles.length-1;i>=0;i--){
       const p = r.particles[i];
       const a = Math.max(0, p.life/(p.ttl||1)) * (p.tw ? (0.65+0.35*Math.sin((performance.now()*0.02)+p.x*0.05)) : 1);
-      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.min(1,a);
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha = Mathmin(1,a);
       if(p.shape==='confetti'){
         ctx.fillStyle=p.color; const w=p.size, h=p.size*0.6; ctx.fillRect(-w/2,-h/2, w,h);
       }else if(p.shape==='star'){
@@ -609,10 +609,10 @@
   async function playEnvelopeAudio(env){
     if(!env.audio) return;
     try{
-      if (env.audio.load) env.audio.load();
+      // ✅ Only load() if not ready yet (prevents resetting currentTime on resume)
+      if (env.audio.readyState === 0 && env.audio.load) env.audio.load();
       if(env.audio.paused){ await env.audio.play(); }
       await fadeAudio(env.audio, 1.0, 900);
-      // update play button
       if (env.player && env.player.btn) env.player.btn.textContent = 'Pause';
     }catch(e){}
   }
@@ -640,6 +640,16 @@
     const { btn, cur, seek, dur } = env.player;
     let dragging = false;
 
+    // 🔒 Prevent player interactions from closing the envelope
+    const stop = (ev)=> ev.stopPropagation();
+    ['click','pointerdown','pointerup','touchstart','touchend','mousedown','input','change']
+      .forEach(evt => {
+        btn.addEventListener(evt, stop);
+        seek.addEventListener(evt, stop);
+        cur.addEventListener(evt, stop);
+        dur.addEventListener(evt, stop);
+      });
+
     audio.addEventListener('loadedmetadata', ()=>{
       const d = isFinite(audio.duration) ? audio.duration : 0;
       seek.max = String(d);
@@ -654,7 +664,7 @@
     });
 
     audio.addEventListener('ended', ()=>{
-      // Reset to start on end
+      // Reset UI on end (do not auto-restart)
       seek.value = '0';
       cur.textContent = '0:00';
       btn.textContent = 'Play';
@@ -666,15 +676,17 @@
       else await pauseEnvelopeAudio(env);
     });
 
-    const dragStart = ()=>{ dragging = true; };
-    const dragEnd = async ()=>{
+    const dragStart = (e)=>{ dragging = true; e.stopPropagation(); };
+    const dragEnd = async (e)=>{
+      e.stopPropagation();
       dragging = false;
       const t = Number(seek.value || 0);
       try{ audio.currentTime = t; }catch(e){}
       cur.textContent = fmt(t);
     };
 
-    seek.addEventListener('input', ()=>{
+    seek.addEventListener('input', (e)=>{
+      e.stopPropagation();
       if(!dragging) dragging = true;
       const t = Number(seek.value || 0);
       cur.textContent = fmt(t);
@@ -761,6 +773,8 @@
     });
 
     env.card.addEventListener('click', (e)=>{
+      // ✅ Don’t close if user clicked inside the player controls
+      if (e.target.closest('.player')) { e.stopPropagation(); return; }
       e.stopPropagation();
       const cr = env.card.getBoundingClientRect();
       const x = e.clientX - cr.left, y = e.clientY - cr.top;
