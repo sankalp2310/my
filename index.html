@@ -40,6 +40,7 @@
   .float-layer{
     position: fixed; inset: 0; z-index: 0;
     pointer-events: none; overflow: hidden;
+    transition: opacity .20s ease;
   }
   .float{
     position:absolute; will-change: transform, opacity; user-select: none;
@@ -55,12 +56,14 @@
   #bgFx{
     position: fixed; inset: 0; z-index: 1000;
     pointer-events: none;
+    transition: opacity .20s ease;
   }
 
   /* Background clickable hearts */
   .bg-hearts{
     position: fixed; inset:0; z-index: 5;
     pointer-events: none; /* container doesn't eat taps */
+    transition: opacity .20s ease;
   }
   .bg-heart{
     position: absolute;
@@ -78,6 +81,14 @@
   .bg-heart:hover{ transform: translateY(-2px) scale(1.05); }
   .bg-heart:active{ transform: translateY(0) scale(0.98); }
   @keyframes bob{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(calc(-1 * var(--bobAmp))); } }
+
+  /* When any envelope is open, hide background floats/hearts/global confetti */
+  body.suppress-bg .float-layer,
+  body.suppress-bg .bg-hearts,
+  body.suppress-bg #bgFx{
+    opacity: 0;
+    pointer-events: none;
+  }
 
   /* Desktop / tablet grid */
   .wall{
@@ -572,7 +583,7 @@
     for(let i=r.particles.length-1;i>=0;i--){
       const p = r.particles[i];
       const a = Math.max(0, p.life/(p.ttl||1)) * (p.tw ? (0.65+0.35*Math.sin((performance.now()*0.02)+p.x*0.05)) : 1);
-      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha = Mathmin(1,a);
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.min(1,a);
       if(p.shape==='confetti'){
         ctx.fillStyle=p.color; const w=p.size, h=p.size*0.6; ctx.fillRect(-w/2,-h/2, w,h);
       }else if(p.shape==='star'){
@@ -609,7 +620,7 @@
   async function playEnvelopeAudio(env){
     if(!env.audio) return;
     try{
-      // ✅ Only load() if not ready yet (prevents resetting currentTime on resume)
+      // Only load() if not ready, so we don't reset the playhead on resume
       if (env.audio.readyState === 0 && env.audio.load) env.audio.load();
       if(env.audio.paused){ await env.audio.play(); }
       await fadeAudio(env.audio, 1.0, 900);
@@ -640,7 +651,7 @@
     const { btn, cur, seek, dur } = env.player;
     let dragging = false;
 
-    // 🔒 Prevent player interactions from closing the envelope
+    // Prevent player interactions from closing the envelope
     const stop = (ev)=> ev.stopPropagation();
     ['click','pointerdown','pointerup','touchstart','touchend','mousedown','input','change']
       .forEach(evt => {
@@ -664,7 +675,6 @@
     });
 
     audio.addEventListener('ended', ()=>{
-      // Reset UI on end (do not auto-restart)
       seek.value = '0';
       cur.textContent = '0:00';
       btn.textContent = 'Play';
@@ -719,6 +729,9 @@
     setTimeout(async ()=>{
       if(currentOpen !== -1){ await closeEnvelope(currentOpen, false); }
 
+      // ✅ Suppress background floats/hearts while open
+      document.body.classList.add('suppress-bg');
+
       env.root.classList.add('focused');
       requestAnimationFrame(async ()=>{
         env.root.classList.add('open');
@@ -752,6 +765,8 @@
     env.root.classList.remove('open');
     if(clearFocus){
       env.root.classList.remove('focused'); clearDim(); currentOpen = -1;
+      // ✅ Restore background floats/hearts when fully closed
+      document.body.classList.remove('suppress-bg');
     }else{
       env.root.classList.remove('focused');
     }
@@ -768,25 +783,39 @@
       const sr = env.seal.getBoundingClientRect();
       const x = (sr.left + sr.width/2) - cr.left;
       const y = (sr.top  + sr.height/2) - cr.top;
-      if(env.root.classList.contains('open')) closeEnvelope(env.i);
-      else handleTapToOpen(env.i, x, y);
+      if(env.root.classList.contains('open')) {
+        closeEnvelope(env.i);
+      } else {
+        handleTapToOpen(env.i, x, y);
+      }
     });
 
     env.card.addEventListener('click', (e)=>{
-      // ✅ Don’t close if user clicked inside the player controls
+      // Don't close if user clicked inside the player controls
       if (e.target.closest('.player')) { e.stopPropagation(); return; }
       e.stopPropagation();
       const cr = env.card.getBoundingClientRect();
       const x = e.clientX - cr.left, y = e.clientY - cr.top;
-      if(env.root.classList.contains('open')) closeEnvelope(env.i);
-      else handleTapToOpen(env.i, x, y);
+      if(env.root.classList.contains('open')) {
+        closeEnvelope(env.i);
+      } else {
+        handleTapToOpen(env.i, x, y);
+      }
     });
   });
 
   // Auto-recover audio on tab return if open
   document.addEventListener('visibilitychange', ()=>{
     if(document.hidden) return;
-    if(currentOpen !== -1){
+    // No change needed for background suppression here:
+    // it follows open/close state.
+    // If an envelope is open and audio is paused by OS, try to play.
+    // (iOS may still require a user gesture.)
+    // currentOpen is maintained by handleTapToOpen / closeEnvelope.
+    // We leave suppression intact until close.
+    // Attempt resume:
+    // (wrapped in try to avoid promise rejection logs)
+    if(typeof currentOpen !== 'undefined' && currentOpen !== -1){
       const env = envs.find(e=>e.i===currentOpen);
       if(env && env.audio && env.audio.paused){ env.audio.play().catch(()=>{}); }
     }
